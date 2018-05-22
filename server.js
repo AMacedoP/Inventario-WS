@@ -3,10 +3,9 @@ var express = require('express');
 var bodyparser = require('body-parser');
 var app = express();
 var propertiesReader = require('properties-reader');
-
-
 var mysql = require('mysql');
-
+// Sha-256
+var sha256 = require('js-sha256');
 // Configuracion conexion a base de datos
 var properties = propertiesReader('dbConnection.properties');
 
@@ -23,19 +22,52 @@ app.use(bodyparser.urlencoded({
     extended: true
 }));
 
-//listar inventario
-app.get('/inventario',function(req, res){
-    db.query('SELECT idModelo as id, nombreMarca as marca, nombreModelo as modelo,\
-    nombreSubtipo as subtipo, v.stock as cantidad, v.precio, v.anio as año FROM Modelo m,\
-    Subtipo s, Marca ma, Vehiculo v WHERE m.Subtipo_idSubtipo = s.idSubtipo and\
-    s.Marca_idMarca = ma.idMarca and m.idModelo = v.Modelo_idModelo',
+// Crear un token y ponerlo en el usuario
+function crearToken(usuario, callback){
+    const min = 100;
+    const max = 999999;
+    var randomInt = Math.random() * (max - min) + min;
+    var token = sha256(randomInt.toString());
+
+    db.query('UPDATE Autenticación SET token = ?, dateCreated = NOW(),\
+    validToken = 1 Where usuario = ?', [token, usuario],
     function(error, results, fields){
-        if (error) throw error;
-        return res.send({error: 'false', results: results, message:'esta cosa funciona'});
+        if(error){
+            callback('-1');
+            throw error;
+        }
+        callback(token);
+    });
+}
+
+// Validar el token
+function validaToken(token, callback){
+    db.query('SELECT * FROM Autenticación WHERE token = ?\
+    AND TIMESTAMPDIFF(MINUTE, dateCreated, NOW()) < 30 AND validToken = 1;',
+    token, function(error, results, fields){
+        if(error) throw error;
+        if(results.length == 1) callback(true);
+        if(results.length == 0) callback(false);
+    });
+}
+
+// Listar el inventario (GET)
+app.get('/inventario',function(req, res){
+    let token = req.query.token;
+    validaToken(token, function(esValido){
+        if(!esValido) return res.send({error: 1, message: 'Token no válido'});
+        db.query('SELECT idModelo as id, nombreMarca as marca, nombreModelo as modelo,\
+        nombreSubtipo as subtipo, v.stock as cantidad, v.precio, v.anio as año FROM Modelo m,\
+        Subtipo s, Marca ma, Vehiculo v WHERE m.Subtipo_idSubtipo = s.idSubtipo and\
+        s.Marca_idMarca = ma.idMarca and m.idModelo = v.Modelo_idModelo',
+        function(error, results, fields){
+            if (error) throw error;
+            return res.send({error: 0, results: results, message: 'Realizado'});
+        });
     });
 });
 
-//filtrar vehiculo
+// Filtrar vehiculo (GET)
 app.get('/inventario/filtrar', function(req, res){
     let token = req.query.token; //falta añadir la parte de token
     let marca = req.query.marca;
@@ -44,66 +76,91 @@ app.get('/inventario/filtrar', function(req, res){
     let precioMin = req.query.precioMin;
     let precioMax = req.query.precioMax;
     let año = req.query.año;
-    var query='SELECT idModelo as id, nombreMarca as marca, nombreModelo as modelo,\
-    nombreSubtipo as subtipo, v.stock as cantidad, v.precio, v.anio as año FROM Modelo m,\
-    Subtipo s, Marca ma, Vehiculo v WHERE m.Subtipo_idSubtipo = s.idSubtipo and\
-    s.Marca_idMarca = ma.idMarca and m.idModelo = v.Modelo_idModelo;';
-    if (marca) query = query + "and ma.nombreMarca = '" + marca + "' ";
-    if (modelo) query = query + "and m.nombreModelo = '" + modelo + "' ";
-    if (subtipo) query = query + "and s.nombreSubtipo = '" + subtipo + "' ";
-    if (precioMin) query = query + 'and v.precio >= ' + precioMin;
-    if (precioMax) query = query + 'and v.precio <= ' + precioMax;
-    if (año) query = query + 'and v.anio = ' + año;
-    db.query(query, function(error , results, fiels){
-        if (error) throw error;
-        return res.send({error: false, data: results, message:'Esto creo que si funciona'});
+    validaToken(token, function(esValido){
+        if(!esValido) return res.send({error: 1, message: 'Token no válido'});
+        var query='SELECT idModelo as id, nombreMarca as marca, nombreModelo as modelo,\
+        nombreSubtipo as subtipo, v.stock as cantidad, v.precio, v.anio as año FROM Modelo m,\
+        Subtipo s, Marca ma, Vehiculo v WHERE m.Subtipo_idSubtipo = s.idSubtipo and\
+        s.Marca_idMarca = ma.idMarca and m.idModelo = v.Modelo_idModelo ';
+        if (marca) query = query + "and ma.nombreMarca = '" + marca + "' ";
+        if (modelo) query = query + "and m.nombreModelo = '" + modelo + "' ";
+        if (subtipo) query = query + "and s.nombreSubtipo = '" + subtipo + "' ";
+        if (precioMin) query = query + 'and v.precio >= ' + precioMin;
+        if (precioMax) query = query + 'and v.precio <= ' + precioMax;
+        if (año) query = query + 'and v.anio = ' + año;
+        db.query(query, function(error , results, fiels){
+            if (error) throw error;
+            return res.send({error: 0, data: results, message: 'Realizado'});
+        });
     });
 });
 
-//detallar un vehiculo
+// Detallar vehiculo (GET)
 app.get('/inventario/detallar', function(req, res){
+    let token = req.query.token;
     let Auto_ID=req.query.Auto_ID;
     console.log(Auto_ID);
-    db.query("SELECT nombreMarca as marca, nombreModelo as modelo,\
-    nombreSubtipo as subtipo, v.stock as cantidad, v.precio, v.anio as año,\
-    tipoTransmision, ubicacion, ubicacion, airbag, pestillosElectricos, aireAcondicionado,\
-    tipoDeLuces, color, traccion, motor, tipoDeFrenos, combustible, foto as imagenes\
-    FROM Modelo m, Subtipo s, Marca ma, Vehiculo v WHERE m.Subtipo_idSubtipo = s.idSubtipo\
-    and s.Marca_idMarca = ma.idMarca and m.idModelo = v.Modelo_idModelo and m.idModelo = ?;",
-    Auto_ID, function(error, results, fields){
-        if (error) throw error;
-        return res.send({error: false, data: results, message:'Esto creo que si funciona'});
-        console.log(Auto_ID);
+    validaToken(token, function(esValido){
+        if(!esValido) return res.send({error: 1, message: 'Token no válido'});
+        db.query("SELECT nombreMarca as marca, nombreModelo as modelo,\
+        nombreSubtipo as subtipo, v.stock as cantidad, v.precio, v.anio as año,\
+        tipoTransmision, ubicacion, ubicacion, airbag, pestillosElectricos, aireAcondicionado,\
+        tipoDeLuces, color, traccion, motor, tipoDeFrenos, combustible, foto as imagenes\
+        FROM Modelo m, Subtipo s, Marca ma, Vehiculo v WHERE m.Subtipo_idSubtipo = s.idSubtipo\
+        and s.Marca_idMarca = ma.idMarca and m.idModelo = v.Modelo_idModelo and m.idModelo = ?;",
+        Auto_ID, function(error, results, fields){
+            if (error) throw error;
+            return res.send({error: false, data: results, message:'Esto creo que si funciona'});
+            console.log(Auto_ID);
+        });
     });
 });
 
-//validar usuario TO BE CONTINUED=> https://www.youtube.com/watch?v=G65pvuTFR_A
+// Validar usuario (POST)
+app.post('/validarUsuario', function(req, res){
+    let usuario = req.body.usuario;
+    let password = req.body.password;
 
-//reservar auto
+    db.query('SELECT * FROM Autenticación WHERE usuario = ? AND password = ?',
+    [usuario, password], function(error, results, fields){
+        if(results.length == 1) crearToken(usuario, function(token){
+            return res.send({error: 0, token: token, message: 'Token creado con éxito'});
+        })
+        if(results.length == 0) return res.send({error: 2, message: 'Usuario o contraseña no válido'});
+    });
+})
+
+// Reservar auto (PUT)
 app.put('/inventario/reservarAuto', function(req, res){
-    let token = req.body.token;   //falta la parte del token
+    let token = req.body.token;
     let Auto_ID = req.body.Auto_ID;
     console.log(Auto_ID);
-    db.query("UPDATE Vehiculo SET stock = stock - 1 WHERE Modelo_idModelo = ?;",
-    Auto_ID, function(error, results, fields){
-        if (error) throw error;
-        return res.send({error:false, data:results, message:'Aber'});
-    })
+    validaToken(token, function(esValido){
+        if(!esValido) return res.send({error: 1, message: 'Token no válido'});
+        db.query("UPDATE Vehiculo SET stock = stock - 1 WHERE Modelo_idModelo = ?;",
+        Auto_ID, function(error, results, fields){
+            if (error) throw error;
+            return res.send({error: 0, data:results, message:'Realizado'});
+        });
+    });
 });
 
-//eliminar reserva de auto
+// Eliminar reserva de auto (PUT)
 app.put('/inventario/eliminarReservarAuto', function(req,res){
-    let token = req.body.token;   //falta la parte del token
+    let token = req.body.token;
     let Auto_ID = req.body.Auto_ID;
     console.log(Auto_ID);
-    db.query("UPDATE Vehiculo SET stock=stock+1 WHERE Modelo_idModelo=?;",
-    Auto_ID, function(error, results, fields){
-        if (error) throw error;
-        return res.send({error:false, data:results, message:'Aber'});
-    })
+    validaToken(token, function(esValido){
+        if(!esValido) return res.send({error: 1, message: 'Token no válido'});
+        db.query("UPDATE Vehiculo SET stock = stock + 1 WHERE Modelo_idModelo = ?;",
+        Auto_ID, function(error, results, fields){
+            if(error) throw error;
+            return res.send({error: 0, data: results, message: 'Realizado'});
+        });
+    });
 });
 
-//empieza a funcionar el servidor
+// Empezar server
 app.listen(3000, function(){
-    console.log('Esta cosa esta funcionando');
+    console.log('El servidor esta escuchando en el puerto 3000');
 });
