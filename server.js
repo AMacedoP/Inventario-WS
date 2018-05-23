@@ -69,7 +69,7 @@ app.get('/inventario',function(req, res){
 
 // Filtrar vehiculo (GET)
 app.get('/inventario/filtrar', function(req, res){
-    let token = req.query.token; //falta añadir la parte de token
+    let token = req.query.token;
     let marca = req.query.marca;
     let modelo = req.query.modelo;
     let subtipo = req.query.subtipo;
@@ -99,6 +99,7 @@ app.get('/inventario/filtrar', function(req, res){
 app.get('/inventario/detallar', function(req, res){
     let token = req.query.token;
     let Auto_ID=req.query.Auto_ID;
+    if(Auto_ID == null) return res.send({error: 3, message: 'No se ha insertado Id del auto'});
     console.log(Auto_ID);
     validaToken(token, function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
@@ -110,7 +111,7 @@ app.get('/inventario/detallar', function(req, res){
         and s.Marca_idMarca = ma.idMarca and m.idModelo = v.Modelo_idModelo and m.idModelo = ?;",
         Auto_ID, function(error, results, fields){
             if (error) throw error;
-            return res.send({error: false, data: results, message:'Esto creo que si funciona'});
+            return res.send({error: 0, data: results, message:'Realizado'});
             console.log(Auto_ID);
         });
     });
@@ -134,7 +135,7 @@ app.post('/validarUsuario', function(req, res){
 app.put('/inventario/reservarAuto', function(req, res){
     let token = req.body.token;
     let Auto_ID = req.body.Auto_ID;
-    console.log(Auto_ID);
+    if(Auto_ID == null) return res.send({error: 3, message: 'No se ha insertado Id del auto'});
     validaToken(token, function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
         db.query("UPDATE Vehiculo SET stock = stock - 1 WHERE Modelo_idModelo = ?;",
@@ -149,7 +150,7 @@ app.put('/inventario/reservarAuto', function(req, res){
 app.put('/inventario/eliminarReservarAuto', function(req,res){
     let token = req.body.token;
     let Auto_ID = req.body.Auto_ID;
-    console.log(Auto_ID);
+    if(Auto_ID == null) return res.send({error: 3, message: 'No se ha insertado Id del auto'});
     validaToken(token, function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
         db.query("UPDATE Vehiculo SET stock = stock + 1 WHERE Modelo_idModelo = ?;",
