@@ -56,7 +56,7 @@ app.get('/inventario',function(req, res){
     let token = req.query.token;
     validaToken(token, function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
-        db.query('SELECT v.idModelo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
+        db.query('SELECT v.idVehiculo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
         s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año FROM Modelo m,\
         Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
         v.idModelo = m.idModelo and m.idModelo = v.idModelo and m.idMarca = ma.idMarca;',
@@ -78,7 +78,7 @@ app.get('/inventario/filtrar', function(req, res){
     let año = req.query.año;
     validaToken(token, function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
-        var query='SELECT v.idModelo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
+        var query='SELECT v.idVehiculo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
         s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año FROM Modelo m,\
         Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
         m.idModelo = v.idModelo and m.idMarca = ma.idMarca ';
