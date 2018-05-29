@@ -107,7 +107,7 @@ app.get('/inventario/detallar', function(req, res){
         s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año,\
         v.tipoTransmision, v.ubicacion, v.airbag,\
         v.tipoDeLuces, v.color, v.motor, v.tipoDeFrenos, v.fotos as imagenes\
-        FROM Modelo m, Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo\
+        FROM Modelo m, Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and v.idMarca = ma.idMarca \
         and m.idModelo = v.idModelo and m.idMarca = ma.idMarca and v.idVehiculo = ?",
         idAuto, function(error, results, fields){
             if (error) throw error;
