@@ -56,10 +56,10 @@ app.get('/inventario',function(req, res){
     let token = req.query.token;
     validaToken(token, function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
-        db.query('SELECT idModelo as id, nombreMarca as marca, nombreModelo as modelo,\
-        nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año FROM Modelo m,\
+        db.query('SELECT v.idModelo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
+        s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año FROM Modelo m,\
         Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
-        v.idModelo = m.idModelo and m.idModelo = v.idModelo',
+        v.idModelo = m.idModelo and m.idModelo = v.idModelo and m.idMarca = ma.idMarca;',
         function(error, results, fields){
             if (error) throw error;
             return res.send({error: 0, results: results, message: 'Realizado'});
@@ -78,10 +78,10 @@ app.get('/inventario/filtrar', function(req, res){
     let año = req.query.año;
     validaToken(token, function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
-        var query='SELECT idModelo as id, nombreMarca as marca, nombreModelo as modelo,\
-        nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año FROM Modelo m,\
+        var query='SELECT v.idModelo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
+        s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año FROM Modelo m,\
         Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
-        m.idModelo = v.idModelo and m.idMarca = ma.idMarca';
+        m.idModelo = v.idModelo and m.idMarca = ma.idMarca ';
         if (marca) query = query + "and ma.nombreMarca = '" + marca + "' ";
         if (modelo) query = query + "and m.nombreModelo = '" + modelo + "' ";
         if (subtipo) query = query + "and s.nombreSubtipo = '" + subtipo + "' ";
@@ -98,17 +98,17 @@ app.get('/inventario/filtrar', function(req, res){
 // Detallar vehiculo (GET)
 app.get('/inventario/detallar', function(req, res){
     let token = req.query.token;
-    let idAuto = req.query.idAuto;
+    let idAuto = parseInt(req.query.idAuto);
     if(idAuto == null) return res.send({error: 3, message: 'No se ha insertado Id del auto'});
     console.log(idAuto);
     validaToken(token, function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
-        db.query("SELECT nombreMarca as marca, nombreModelo as modelo,\
-        nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año,\
-        tipoTransmision, ubicacion, airbag,\
-        tipoDeLuces, color, motor, tipoDeFrenos, fotos as imagenes\
+        db.query("SELECT v.idVehiculo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
+        s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año,\
+        v.tipoTransmision, v.ubicacion, v.airbag,\
+        v.tipoDeLuces, v.color, v.motor, v.tipoDeFrenos, v.fotos as imagenes\
         FROM Modelo m, Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo\
-        and and m.idModelo = v.idModelo and m.idMarca = ma.idMarca and v.idVehiculo = ?;",
+        and m.idModelo = v.idModelo and m.idMarca = ma.idMarca and v.idVehiculo = ?",
         idAuto, function(error, results, fields){
             if (error) throw error;
             return res.send({error: 0, data: results, message:'Realizado'});
