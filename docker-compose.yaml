@@ -9,4 +9,4 @@ services:
         ports:
             - "3000:3000"
         restart: on-failure
-        command: bash -c "npm install && npm start"
+        command: bash -c "npm install && node server.js"

@@ -51,11 +51,21 @@ function validaToken(token, callback){
     });
 }
 
+// Validar token estático
+function validaTokenEst(token, user, callback){
+    db.query('SELECT * FROM Autenticación WHERE token = ? AND usuario = ?',
+    [token, user], function(error, results, fields){
+        if(error) throw error;
+        if(results.length == 1) callback(true);
+        if(results.length == 0) callback(false);
+    });
+}
+
 // Listar el inventario (GET)
 app.get('/inventario',function(req, res){
-    let token = req.query.token;
-    validaToken(token, function(esValido){
-        if(!esValido) return res.send({error: 1, message: 'Token no válido'});
+    let token = req.header('token');
+    validaTokenEst(token, 'filtrar', function(esValido){
+        if(esValido === false) return res.send({error: 1, message: 'Token no válido'});
         db.query('SELECT v.idVehiculo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
         s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año, v.fotos FROM Modelo m,\
         Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
@@ -73,14 +83,14 @@ app.get('/inventario',function(req, res){
 
 // Filtrar vehiculo (GET)
 app.get('/inventario/filtrar', function(req, res){
-    let token = req.query.token;
+    let token = req.header('token');
     let marca = req.query.marca;
     let modelo = req.query.modelo;
     let subtipo = req.query.subtipo;
     let precioMin = req.query.precioMin;
     let precioMax = req.query.precioMax;
     let año = req.query.año;
-    validaToken(token, function(esValido){
+    validaTokenEst(token, 'filtrar', function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
         var query='SELECT v.idVehiculo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
         s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año, v.fotos FROM Modelo m,\
@@ -105,11 +115,10 @@ app.get('/inventario/filtrar', function(req, res){
 
 // Detallar vehiculo (GET)
 app.get('/inventario/detallar', function(req, res){
-    let token = req.query.token;
+    let token = req.header('token');
     let idAuto = parseInt(req.query.idAuto);
     if(idAuto == null) return res.send({error: 3, message: 'No se ha insertado Id del auto'});
-    console.log(idAuto);
-    validaToken(token, function(esValido){
+    validaTokenEst(token, 'filtrar', function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
         db.query("SELECT v.idVehiculo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
         s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año,\
@@ -124,7 +133,26 @@ app.get('/inventario/detallar', function(req, res){
                 results[i].fotos = JSON.parse(results[i].fotos);
             }
             return res.send({error: 0, data: results, message:'Realizado'});
-            console.log(Auto_ID);
+        });
+    });
+});
+
+// Listar todas las marcas (GET)
+app.get('/listarMarcas', function(req, res) {
+    let token = req.header('token');
+    validaTokenEst(token, 'filtrar', function(validToken){
+        if(validToken === false){
+            return res.send({error: 1, message: 'Token no válido'});
+        }
+        db.query("SELECT nombreMarca FROM Marca",
+        function(error, results, fields) {
+            if(error) throw error;
+            var marcas = [];
+            for(var index in results){
+                marcas.push(results[index].nombreMarca);
+            }
+            results = JSON.parse(JSON.stringify(marcas));
+            return res.send({error: 0, results: results, message: 'Realizado'});
         });
     });
 });
