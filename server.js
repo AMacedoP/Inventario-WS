@@ -62,53 +62,59 @@ function validaTokenEst(token, user, callback){
 }
 
 // Listar el inventario (GET)
-app.get('/inventario',function(req, res){
-    let token = req.header('token');
-    validaTokenEst(token, 'filtrar', function(esValido){
-        if(esValido === false) return res.send({error: 1, message: 'Token no válido'});
-        db.query('SELECT v.idVehiculo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
-        s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año, v.fotos FROM Modelo m,\
-        Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
-        v.idModelo = m.idModelo and m.idModelo = v.idModelo and m.idMarca = ma.idMarca;',
-        function(error, results, fields){
-            if (error) throw error;
-            var i;
-            for (i = 0; i < results.length; i++){
-                results[i].fotos = JSON.parse(results[i].fotos);
-            }
-            return res.send({error: 0, results: results, message: 'Realizado'});
-        });
-    });
-});
+//app.get('/inventario',function(req, res){
+//    let token = req.header('token');
+//    validaTokenEst(token, 'filtrar', function(esValido){
+//        if(esValido === false) return res.send({error: 1, message: 'Token no válido'});
+//        db.query('SELECT v.idVehiculo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
+//        s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año, v.fotos FROM Modelo m,\
+//        Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
+//        v.idModelo = m.idModelo and m.idModelo = v.idModelo and m.idMarca = ma.idMarca;',
+//        function(error, results, fields){
+//            if (error) throw error;
+//            var i;
+//            for (i = 0; i < results.length; i++){
+//                results[i].fotos = JSON.parse(results[i].fotos);
+//            }
+//            return res.send({error: 0, results: results, message: 'Realizado'});
+//        });
+//    });
+//});
 
 // Filtrar vehiculo (GET)
-app.get('/inventario/filtrar', function(req, res){
+app.get('/inventario', function(req, res){
     let token = req.header('token');
+    let numPag = parseInt(req.query.numPag);
     let marca = req.query.marca;
     let modelo = req.query.modelo;
     let subtipo = req.query.subtipo;
     let precioMin = req.query.precioMin;
     let precioMax = req.query.precioMax;
-    let año = req.query.año;
+    let añoMin = req.query.añoMin;
+    let añoMax = req.query.añoMax;
     validaTokenEst(token, 'filtrar', function(esValido){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
-        var query='SELECT v.idVehiculo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
-        s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año, v.fotos FROM Modelo m,\
-        Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
+        var query='SELECT v.idVehiculo as id, ma.nombreMarca as marca,\
+        m.nombreModelo as modelo, s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año,\
+        v.fotos FROM Modelo m, Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
         m.idModelo = v.idModelo and m.idMarca = ma.idMarca ';
         if (marca) query = query + "and ma.nombreMarca = '" + marca + "' ";
         if (modelo) query = query + "and m.nombreModelo = '" + modelo + "' ";
         if (subtipo) query = query + "and s.nombreSubtipo = '" + subtipo + "' ";
         if (precioMin) query = query + 'and v.precio >= ' + precioMin;
         if (precioMax) query = query + 'and v.precio <= ' + precioMax;
-        if (año) query = query + 'and v.anio = ' + año;
+        if (añoMin) query = query + 'and v.anio >= ' + añoMin;
+        if (añoMax) query = query + 'and v.anio <= ' + añoMax;
+        query = query + "ORDER BY v.idVehiculo";
         db.query(query, function(error , results, fiels){
             if (error) throw error;
-            var i;
-            for (i = 0; i < results.length; i++){
+            var numPags = Math.floor(results.length/10);
+            var startElement = (numPag-1)*10;
+            results = results.slice(startElement, startElement+10);
+            for (var i = 0; i < results.length; i++){
                 results[i].fotos = JSON.parse(results[i].fotos);
             }
-            return res.send({error: 0, data: results, message: 'Realizado'});
+            return res.send({error: 0, numPags: numPags, results: results, message: 'Realizado'});
         });
     });
 });
@@ -123,16 +129,15 @@ app.get('/inventario/detallar', function(req, res){
         db.query("SELECT v.idVehiculo as id, ma.nombreMarca as marca, m.nombreModelo as modelo,\
         s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año,\
         v.tipoTransmision, v.ubicacion, v.airbag,\
-        v.tipoDeLuces, v.color, v.motor, v.tipoDeFrenos, v.fotos as imagenes\
+        v.tipoDeLuces, v.color, v.motor, v.tipoDeFrenos, v.fotos\
         FROM Modelo m, Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and v.idMarca = ma.idMarca \
         and m.idModelo = v.idModelo and m.idMarca = ma.idMarca and v.idVehiculo = ?",
         idAuto, function(error, results, fields){
             if (error) throw error;
-            var i;
-            for (i = 0; i < results.length; i++){
+            for (var i = 0; i < results.length; i++){
                 results[i].fotos = JSON.parse(results[i].fotos);
             }
-            return res.send({error: 0, data: results, message:'Realizado'});
+            return res.send({error: 0, results: results, message:'Realizado'});
         });
     });
 });
@@ -171,8 +176,8 @@ app.post('/validarUsuario', function(req, res){
     });
 })
 
-// Reservar auto (PUT)
-app.put('/inventario/reservarAuto', function(req, res){
+// Reservar auto (POST)
+app.post('/inventario/reservarAuto', function(req, res){
     let token = req.body.token;
     let idAuto = req.body.idAuto;
     if(idAuto == null) return res.send({error: 3, message: 'No se ha insertado Id del auto'});
@@ -186,8 +191,8 @@ app.put('/inventario/reservarAuto', function(req, res){
     });
 });
 
-// Eliminar reserva de auto (PUT)
-app.put('/inventario/eliminarReservarAuto', function(req,res){
+// Eliminar reserva de auto (POST)
+app.post('/inventario/eliminarReservarAuto', function(req,res){
     let token = req.body.token;
     let idAuto = req.body.idAuto;
     if(idAuto == null) return res.send({error: 3, message: 'No se ha insertado Id del auto'});
