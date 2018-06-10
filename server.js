@@ -96,7 +96,7 @@ app.get('/inventario', function(req, res){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
         var query='SELECT v.idVehiculo as id, ma.nombreMarca as marca,\
         m.nombreModelo as modelo, s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año,\
-        v.fotos FROM Modelo m, Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
+        v.color, v.fotos FROM Modelo m, Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
         m.idModelo = v.idModelo and m.idMarca = ma.idMarca ';
         if (marca) query = query + "and ma.nombreMarca = '" + marca + "' ";
         if (modelo) query = query + "and m.nombreModelo = '" + modelo + "' ";
@@ -157,6 +157,38 @@ app.get('/listarMarcas', function(req, res) {
                 marcas.push(results[index].nombreMarca);
             }
             results = JSON.parse(JSON.stringify(marcas));
+            return res.send({error: 0, results: results, message: 'Realizado'});
+        });
+    });
+});
+
+// Listar los modelos de una marca (GET)
+app.get('/listarModelos', function(req, res) {
+    let token = req.header('token');
+    let marca = req.query.marca;
+    validaTokenEst(token, 'filtrar', function(validToken){
+        if (validToken == false) return res.send({error: 1, message: 'Token no válido'});
+        db.query("SELECT mo.nombreModelo FROM Modelo mo, Marca m WHERE mo.idMarca = m.idMarca AND m.nombreMarca = ?",
+        marca, function(error, results, fields) {
+            if(error) throw error;
+            var modelos = [];
+            for(var index in results){
+                modelos.push(results[index].nombreModelo);
+            }
+            results = JSON.parse(JSON.stringify(modelos));
+            return res.send({error: 0, results: results, message: 'Realizado'});
+        });
+    });
+});
+
+// Listar todos los subtipos
+app.get('/listarSubtipos', function(req, res) {
+    let token = req.header('token');
+    validaTokenEst(token, 'filtrar', function(validToken){
+        if (validToken == false) return res.send({error: 1, message: 'Token no válido'});
+        db.query("SELECT idSubtipo as id, nombreSubtipo as nombre, foto FROM Subtipo;",
+        function(error, results, fields) {
+            if(error) throw error;
             return res.send({error: 0, results: results, message: 'Realizado'});
         });
     });
