@@ -101,10 +101,10 @@ app.get('/inventario', function(req, res){
         if (marca) query = query + "and ma.nombreMarca = '" + marca + "' ";
         if (modelo) query = query + "and m.nombreModelo = '" + modelo + "' ";
         if (subtipo) query = query + "and s.nombreSubtipo = '" + subtipo + "' ";
-        if (precioMin) query = query + 'and v.precio >= ' + precioMin;
-        if (precioMax) query = query + 'and v.precio <= ' + precioMax;
-        if (añoMin) query = query + 'and v.anio >= ' + añoMin;
-        if (añoMax) query = query + 'and v.anio <= ' + añoMax;
+        if (precioMin) query = query + 'and v.precio >= ' + precioMin + ' ';
+        if (precioMax) query = query + 'and v.precio <= ' + precioMax + ' ';
+        if (añoMin) query = query + 'and v.anio >= ' + añoMin + ' ';
+        if (añoMax) query = query + 'and v.anio <= ' + añoMax + ' ';
         query = query + "ORDER BY v.idVehiculo";
         db.query(query, function(error , results, fiels){
             if (error) throw error;
@@ -149,7 +149,8 @@ app.get('/listarMarcas', function(req, res) {
         if(validToken === false){
             return res.send({error: 1, message: 'Token no válido'});
         }
-        db.query("SELECT nombreMarca FROM Marca",
+        db.query("SELECT DISTINCT(ma.nombreMarca) as nombreMarca FROM Modelo m, Subtipo s, Marca ma,\
+        Vehiculo v WHERE v.idSubtipo = s.idSubtipo AND m.idModelo = v.idModelo AND m.idMarca = ma.idMarca",
         function(error, results, fields) {
             if(error) throw error;
             var marcas = [];
@@ -168,7 +169,8 @@ app.get('/listarModelos', function(req, res) {
     let marca = req.query.marca;
     validaTokenEst(token, 'filtrar', function(validToken){
         if (validToken == false) return res.send({error: 1, message: 'Token no válido'});
-        db.query("SELECT mo.nombreModelo FROM Modelo mo, Marca m WHERE mo.idMarca = m.idMarca AND m.nombreMarca = ?",
+        db.query("SELECT DISTINCT(m.nombreModelo) as nombreModelo FROM Modelo m, Subtipo s, Marca ma,\
+        Vehiculo v WHERE v.idSubtipo = s.idSubtipo AND m.idModelo = v.idModelo AND m.idMarca = ma.idMarca AND ma.nombreMarca = ?",
         marca, function(error, results, fields) {
             if(error) throw error;
             var modelos = [];
@@ -181,8 +183,31 @@ app.get('/listarModelos', function(req, res) {
     });
 });
 
-// Listar todos los subtipos
+// Listar subtipos para filtro
 app.get('/listarSubtipos', function(req, res) {
+    let token = req.header('token');
+    let marca = req.query.marca;
+    let modelo = req.query.modelo;
+    validaTokenEst(token, 'filtrar', function(validToken){
+        if (validToken == false) return res.send({error: 1, message: 'Token no válido'});
+        var query = "SELECT DISTINCT(s.nombreSubtipo) as subtipo FROM Modelo m, Subtipo s, Marca ma,\
+        Vehiculo v WHERE v.idSubtipo = s.idSubtipo AND m.idModelo = v.idModelo AND m.idMarca = ma.idMarca "
+        if(modelo) query = query + "AND m.nombreModelo = '" + modelo + "' ";
+        if(marca) query = query + "AND ma.nombreMarca = '" + marca + "'";
+        db.query(query, function(error, results, fields) {
+            if(error) throw error;
+            var subtipos = [];
+            for(var index in results){
+                subtipos.push(results[index].subtipo);
+            }
+            results = JSON.parse(JSON.stringify(subtipos));
+            return res.send({error: 0, results: results, message: 'Realizado'});
+        });
+    });
+});
+
+// Listar subtipos con fotos
+app.get('/listarSubtipo', function(req, res) {
     let token = req.header('token');
     validaTokenEst(token, 'filtrar', function(validToken){
         if (validToken == false) return res.send({error: 1, message: 'Token no válido'});
