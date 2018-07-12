@@ -108,7 +108,7 @@ app.get('/inventario', function(req, res){
         query = query + "ORDER BY v.idVehiculo";
         db.query(query, function(error , results, fiels){
             if (error) throw error;
-            var numPags = Math.floor(results.length/10);
+            var numPags = Math.ceil(results.length/10);
             var startElement = (numPag-1)*10;
             results = results.slice(startElement, startElement+10);
             for (var i = 0; i < results.length; i++){
