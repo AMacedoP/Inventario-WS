@@ -97,7 +97,7 @@ app.get('/inventario', function(req, res){
         var query='SELECT v.idVehiculo as id, ma.nombreMarca as marca,\
         m.nombreModelo as modelo, s.nombreSubtipo as subtipo, v.stock, v.precio, v.anio as año,\
         v.color, v.fotos FROM Modelo m, Subtipo s, Marca ma, Vehiculo v WHERE v.idSubtipo = s.idSubtipo and\
-        m.idModelo = v.idModelo and m.idMarca = ma.idMarca ';
+        m.idModelo = v.idModelo and m.idMarca = ma.idMarca and stock > 0 ';
         if (marca) query = query + "and ma.nombreMarca = '" + marca + "' ";
         if (modelo) query = query + "and m.nombreModelo = '" + modelo + "' ";
         if (subtipo) query = query + "and s.nombreSubtipo = '" + subtipo + "' ";
