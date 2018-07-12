@@ -242,7 +242,10 @@ app.post('/inventario/reservarAuto', function(req, res){
         if(!esValido) return res.send({error: 1, message: 'Token no válido'});
         db.query("UPDATE Vehiculo SET stock = stock - 1 WHERE idVehiculo = ?;",
         idAuto, function(error, results, fields){
-            if (error) throw error;
+            if (error){
+                return res.send({error: 2, message:'No hay stock del auto'});
+                throw error;
+            }
             return res.send({error: 0, message:'Auto reservado correctamente'});
         });
     });
